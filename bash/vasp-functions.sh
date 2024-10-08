@@ -117,3 +117,31 @@ forceplot() {
     }
 ' OUTCAR | awk '/-----$/ { in_divider = !in_divider; next } in_divider { print }' | awk '{ print $(NF-2), $(NF-1), $NF }' | awk '{ magnitude = sqrt($1^2 + $2^2 + $3^2); print magnitude }' | hist  -x
 }
+
+find_converged() {
+    find . -type f -name "OUTCAR" -exec grep -l "stopping struct" {} ; | xargs -I{} dirname {} 
+}
+
+
+sync_vasprun() {
+        if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+        cat << EOF
+            Usage: sync_vasprun <remote_path> <local_dest>
+            
+            Syncs the vasprun.xml file from a remote server to a local destination.
+            
+            Parameters:
+              remote_path   The remote path in the format user@host:/path/to/remote
+              local_dest    The local destination directory where files will be synced.
+            
+            Example:
+              sync_vasprun user@remote.cluster.edu:/home/path/datadir ./
+            EOF
+                    return
+    fi
+
+    local remote_path="$1"  # Expect the first argument to include user and path
+    local local_dest="$2"
+
+    rsync -avz --include='*/' --include='vasprun.xml' --exclude='*' "$remote_path" "$local_dest"
+}
