@@ -145,3 +145,51 @@ sync_vasprun() {
 
     rsync -avz --include='*/' --include='vasprun.xml' --exclude='*' "$remote_path" "$local_dest"
 }
+
+sort_atoms() {
+    local input_file
+
+    # Check for CONTCAR first, then POSCAR
+    if [[ -f "CONTCAR" ]]; then
+        input_file="CONTCAR"
+    elif [[ -f "POSCAR" ]]; then
+        input_file="POSCAR"
+    else
+        echo "Neither CONTCAR nor POSCAR file found."
+        return 1
+    fi
+
+    echo "Indices and identities of atoms in $input_file sorted by height (z-coordinate):"
+
+    # Read the atom identities (line 5)
+    local atom_identities
+    read -r line < <(sed -n '6p' "$input_file")
+    atom_identities=($line)
+
+    # Read the number of each atom type (line 6)
+    local atom_counts
+    read -r line < <(sed -n '7p' "$input_file")
+    atom_counts=($line)
+
+    # Read the Cartesian coordinates (starting from line 8)
+    local coords_start_line=10
+    local coords=()
+    local index=1
+
+    for i in "${!atom_identities[@]}"; do
+        local count=${atom_counts[$i]}
+        for ((j=0; j<count; j++)); do
+            read -r coord_line < <(sed -n "$((coords_start_line + index - 1))p" "$input_file")
+            coords+=("$index ${atom_identities[$i]} $(echo $coord_line | awk '{print $3}')")  # Store index, identity, and z-coordinate
+            ((index++))
+        done
+    done
+
+    # Sort by z-coordinate (third column)
+    printf "%s\n" "${coords[@]}" | sort -k3,3n | while read -r sorted_line; do
+        local idx identity z_coord
+        read -r idx identity z_coord <<< "$sorted_line"
+        printf "$idx\t$identity\t$z_coord\n"
+    done
+
+}
