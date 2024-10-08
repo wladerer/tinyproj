@@ -119,7 +119,7 @@ forceplot() {
 }
 
 find_converged() {
-    find . -type f -name "OUTCAR" -exec grep -l "stopping struct" {} ; | xargs -I{} dirname {} 
+    find . -type f -name "OUTCAR" -exec grep -l "stopping struct" {} \; | xargs -I{} dirname {} 
 }
 
 
